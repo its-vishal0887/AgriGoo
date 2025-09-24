@@ -11,10 +11,9 @@ export function Navigation() {
 
   const menuItems = [
     { name: "Home", href: "/" },
-    { name: "Detection", href: "/detection" },
-    { name: "Live Map", href: "/map" },
-    { name: "Analytics", href: "/analytics" },
-    { name: "Pricing", href: "/pricing" },
+    { name: "Crop Detection", href: "/detection", target: "_blank" },
+    { name: "Soil Health", href: "/soil-health" },
+    { name: "Live Market", href: "/live-market" },
   ]
 
   return (
@@ -29,6 +28,7 @@ export function Navigation() {
               <Link
                 key={item.name}
                 href={item.href}
+                target={item.target}
                 className="text-gray-700 hover:text-primary font-medium transition-colors duration-200 relative group py-2"
               >
                 {item.name}
@@ -45,10 +45,6 @@ export function Navigation() {
             >
               Login
             </Link>
-            <Button className="bg-primary hover:bg-primary/90 text-white font-semibold px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center space-x-2 min-h-[44px]">
-              <span>Get Started</span>
-              <span>→</span>
-            </Button>
           </div>
 
           {/* Mobile Menu */}
@@ -72,6 +68,7 @@ export function Navigation() {
                       <Link
                         key={item.name}
                         href={item.href}
+                        target={item.target}
                         className="text-lg font-medium text-gray-700 hover:text-primary transition-colors duration-200 py-3 px-2 rounded-lg hover:bg-primary/5 min-h-[44px] flex items-center"
                         onClick={() => setIsOpen(false)}
                       >
@@ -89,13 +86,6 @@ export function Navigation() {
                     >
                       Login
                     </Link>
-                    <Button
-                      className="bg-primary hover:bg-primary/90 text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 min-h-[44px]"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      <span>Get Started</span>
-                      <span>→</span>
-                    </Button>
                   </div>
                 </div>
               </SheetContent>

@@ -1,30 +1,14 @@
-# Crop doctor landing page
+# Crop Doctor
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
-
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/its-vishal0887s-projects/v0-crop-doctor-landing-page)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/projects/6zizmIFKpFU)
+AgriGoo - AI Crop Health Detection
 
 ## Overview
 
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+Crop Doctor is an AI-powered application that helps farmers detect and diagnose crop diseases with high accuracy. The application provides real-time analysis, disease outbreak mapping, and actionable recommendations to protect crops.
 
-## Deployment
+## Development
 
-Your project is live at:
-
-**[https://vercel.com/its-vishal0887s-projects/v0-crop-doctor-landing-page](https://vercel.com/its-vishal0887s-projects/v0-crop-doctor-landing-page)**
-
-## Build your app
-
-Continue building your app on:
-
-**[https://v0.app/chat/projects/6zizmIFKpFU](https://v0.app/chat/projects/6zizmIFKpFU)**
-
-## How It Works
-
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+1. Clone the repository
+2. Run `npm install` to install dependencies
+3. Run `npm run dev` to start the development server
+4. Open [http://localhost:3000](http://localhost:3000) in your browser

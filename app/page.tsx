@@ -291,28 +291,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="bg-primary text-white rounded-2xl p-8 sm:p-12">
-              <h3 className="text-2xl sm:text-3xl font-bold mb-4">Ready to Protect Your Crops?</h3>
-              <p className="text-lg sm:text-xl mb-6 sm:mb-8 text-primary-foreground/90 px-2">
-                Join thousands of farmers who trust AgriGoo for healthier harvests
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center max-w-md mx-auto sm:max-w-none">
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  className="w-full sm:w-auto bg-white text-primary hover:bg-primary-foreground/95 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold min-h-[44px]"
-                >
-                  Start Free Trial
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto border-white text-white hover:bg-primary/80 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold bg-transparent min-h-[44px]"
-                >
-                  Learn More
-                </Button>
-              </div>
-            </div>
+
           </div>
         </div>
       </section>

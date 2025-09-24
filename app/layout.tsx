@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   title: "AgriGoo - AI-Powered Crop Disease Detection",
   description:
     "Crop disease detection made easy. Upload, analyze, and get results with 99.3% accuracy. Trusted by 15,000+ farmers worldwide.",
-  generator: "v0.app",
+  generator: "AgriGoo",
 }
 
 export default function RootLayout({

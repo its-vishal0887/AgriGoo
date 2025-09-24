@@ -11,9 +11,9 @@ export function Navigation() {
 
   const menuItems = [
     { name: "Home", href: "/" },
+		{ name: "Dashboard", href: "/dashboard" },
     { name: "Crop Detection", href: "/detection", target: "_blank" },
     { name: "Soil Health", href: "/soil-health" },
-    { name: "Live Market", href: "/live-market" },
   ]
 
   return (

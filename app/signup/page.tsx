@@ -43,12 +43,7 @@ const testimonials = [
     name: "Sita Devi",
     role: "Wheat Farmer, UP",
   },
-  {
-    quote:
-      "Market price alerts help me sell at the right time.",
-    name: "Harpreet Singh",
-    role: "Rice Farmer, Punjab",
-  },
+  // Removed market-related testimonial to focus on crop health
 ]
 
 function usePasswordStrength(password: string) {

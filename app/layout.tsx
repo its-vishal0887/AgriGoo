@@ -3,6 +3,8 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { Suspense } from "react"
 import "./globals.css"
+import { DashboardProvider } from "@/components/dashboard-context"
+import { Toaster } from "sonner"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -25,7 +27,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans ${inter.variable} antialiased`}>
-        <Suspense fallback={null}>{children}</Suspense>
+        <DashboardProvider>
+          <Suspense fallback={null}>{children}</Suspense>
+          <Toaster richColors position="top-right" />
+        </DashboardProvider>
       </body>
     </html>
   )

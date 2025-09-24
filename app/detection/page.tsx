@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -21,7 +21,11 @@ import {
   TrendingUp,
   Clock,
   FileImage,
+  AlertCircle,
 } from "lucide-react"
+import { MLService, DetectionResult } from "@/lib/ml-service"
+import { dataService } from "@/lib/data-service"
+import { useToast } from "@/components/ui/use-toast"
 
 interface AnalysisResult {
   disease: string
@@ -41,6 +45,34 @@ export default function DetectionPage() {
   const [currentStep, setCurrentStep] = useState("")
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [imageBase64, setImageBase64] = useState<string | null>(null)
+  const { toast } = useToast()
+  
+  // Initialize ML service
+  const mlService = new MLService()
+  
+  // Initialize data service for real-time updates
+  useEffect(() => {
+    // In a real app, you would get these from auth context or user settings
+    const mockToken = "mock-auth-token";
+    const mockFarmId = "farm-123";
+    const mockRegionId = "region-456";
+    
+    dataService.initialize(mockToken, mockFarmId, mockRegionId);
+    
+    // Subscribe to scan updates
+    dataService.onScanUpdate((data) => {
+      toast({
+        title: "Scan Update",
+        description: `New scan results available: ${data.status}`,
+        variant: "default",
+      });
+    });
+    
+    return () => {
+      dataService.disconnect();
+    };
+  }, [toast]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -74,58 +106,123 @@ export default function DetectionPage() {
     const maxSize = 10 * 1024 * 1024 // 10MB
 
     if (!validTypes.includes(file.type)) {
-      alert("Please upload a JPG, PNG, or WebP image.")
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a JPG, PNG, or WebP image.",
+        variant: "destructive",
+      })
       return
     }
 
     if (file.size > maxSize) {
-      alert("File size must be less than 10MB.")
+      toast({
+        title: "File too large",
+        description: "File size must be less than 10MB.",
+        variant: "destructive",
+      })
       return
     }
 
     setSelectedFile(file)
     const url = URL.createObjectURL(file)
     setPreviewUrl(url)
+    
+    // Convert to base64 for API submission
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const base64String = reader.result as string
+      setImageBase64(base64String.split(',')[1]) // Remove data URL prefix
+    }
+    reader.readAsDataURL(file)
   }
 
   const startAnalysis = async () => {
-    if (!selectedFile) return
+    if (!selectedFile || !imageBase64) return
 
     setIsAnalyzing(true)
     setAnalysisProgress(0)
     setResult(null)
+    setCurrentStep("Uploading")
 
-    // Simulate analysis process
-    const steps = [
-      { step: "Uploading", duration: 1000 },
-      { step: "Analyzing", duration: 2000 },
-      { step: "Processing", duration: 1500 },
-      { step: "Results", duration: 500 },
-    ]
-
-    let totalProgress = 0
-    for (let i = 0; i < steps.length; i++) {
-      setCurrentStep(steps[i].step)
-
-      const stepProgress = 100 / steps.length
-      const startProgress = totalProgress
-      const endProgress = totalProgress + stepProgress
-
-      // Animate progress for this step
-      const animationDuration = steps[i].duration
-      const animationSteps = 20
-      const progressIncrement = stepProgress / animationSteps
-      const timeIncrement = animationDuration / animationSteps
-
-      for (let j = 0; j <= animationSteps; j++) {
-        await new Promise((resolve) => setTimeout(resolve, timeIncrement))
-        setAnalysisProgress(Math.min(startProgress + progressIncrement * j, endProgress))
+    try {
+      // Update progress as we go
+      setAnalysisProgress(25)
+      setCurrentStep("Analyzing")
+      
+      // Call ML service for disease detection
+      const detectionResult = await mlService.detectDisease(imageBase64)
+      
+      setAnalysisProgress(75)
+      setCurrentStep("Processing")
+      
+      // Send the image scan to the data service for real-time updates
+      const location = { lat: 40.7128, lng: -74.0060 } // Example location - in real app would use geolocation
+      await dataService.sendImageScan(imageBase64, location, {
+        filename: selectedFile.name,
+        fileType: selectedFile.type,
+        timestamp: new Date().toISOString()
+      }).catch(error => {
+        console.error("Error sending image scan:", error)
+        // Continue with analysis even if real-time update fails
+      })
+      
+      setAnalysisProgress(90)
+      
+      // Map the detection result to our UI model
+      const analysisResult: AnalysisResult = {
+        disease: detectionResult.diseaseName,
+        confidence: detectionResult.confidence,
+        severity: mapSeverity(detectionResult.confidence),
+        description: detectionResult.description || 
+          "This disease affects plant health and yield. Early detection and treatment is recommended.",
+        treatment: detectionResult.treatments || [
+          "Apply appropriate fungicide or treatment specific to this disease",
+          "Remove and destroy affected plant parts",
+          "Improve air circulation around plants",
+          "Water at soil level to avoid wetting leaves",
+        ],
+        prevention: detectionResult.preventions || [
+          "Use disease-resistant varieties when possible",
+          "Rotate crops annually to break disease cycle",
+          "Maintain proper plant spacing for air circulation",
+          "Apply mulch to prevent soil splash onto leaves",
+          "Monitor plants regularly for early detection",
+        ],
+        nextSteps: [
+          "Begin treatment within 24 hours for best results",
+          "Monitor plant response after 1 week of treatment",
+          "Consider soil testing for nutrient deficiencies",
+          "Schedule follow-up analysis in 2 weeks",
+        ],
       }
-
-      totalProgress = endProgress
+      
+      setAnalysisProgress(100)
+      setCurrentStep("Results")
+      setResult(analysisResult)
+    } catch (error) {
+      console.error("Analysis error:", error)
+      toast({
+        title: "Analysis Failed",
+        description: "Could not complete the disease detection. Please try again.",
+        variant: "destructive",
+      })
+      
+      // Fallback to mock data if ML service fails
+      fallbackToMockResult()
+    } finally {
+      setIsAnalyzing(false)
     }
-
-    // Mock result
+  }
+  
+  // Map confidence score to severity level
+  const mapSeverity = (confidence: number): "low" | "medium" | "high" => {
+    if (confidence < 70) return "low"
+    if (confidence < 90) return "medium"
+    return "high"
+  }
+  
+  // Fallback to mock data if ML service fails
+  const fallbackToMockResult = () => {
     const mockResult: AnalysisResult = {
       disease: "Early Blight (Alternaria solani)",
       confidence: 94.7,
@@ -152,9 +249,8 @@ export default function DetectionPage() {
         "Schedule follow-up analysis in 2 weeks",
       ],
     }
-
+    
     setResult(mockResult)
-    setIsAnalyzing(false)
   }
 
   const getSeverityColor = (severity: string) => {

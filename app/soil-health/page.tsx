@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -8,7 +8,10 @@ import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Upload, Camera, Flask, LineChart, Leaf, Calendar } from "lucide-react"
+import { Upload, Camera, Flask, LineChart, Leaf, Calendar, AlertCircle } from "lucide-react"
+import { MLService, SoilHealthAnalysis } from "@/lib/ml-service"
+import { dataService, SensorData } from "@/lib/data-service"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function SoilHealthPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -16,10 +19,55 @@ export default function SoilHealthPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [activeSection, setActiveSection] = useState("upload")
+  const [imageBase64, setImageBase64] = useState<string | null>(null)
+  const [soilData, setSoilData] = useState<SoilHealthAnalysis | null>(null)
+  const [sensorData, setSensorData] = useState<SensorData | null>(null)
+  const { toast } = useToast()
+  
+  // Initialize ML service
+  const mlService = new MLService()
+  
+  // Initialize data service and subscribe to real-time updates
+  useEffect(() => {
+    // In a real app, you would get these from auth context or user settings
+    const mockToken = "mock-auth-token";
+    const mockFarmId = "farm-123";
+    
+    dataService.initialize(mockToken, mockFarmId);
+    
+    // Subscribe to sensor data updates
+    dataService.onScanUpdate((data) => {
+      if (data.type === 'soil') {
+        toast({
+          title: "Soil Data Update",
+          description: `New soil analysis data available`,
+          variant: "default",
+        });
+        
+        // Update sensor data if available
+        if (data.sensorData) {
+          setSensorData(data.sensorData);
+        }
+      }
+    });
+    
+    return () => {
+      dataService.disconnect();
+    };
+  }, [toast]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0])
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      
+      // Convert to base64 for API submission
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setImageBase64(base64String.split(',')[1]); // Remove data URL prefix
+      };
+      reader.readAsDataURL(file);
     }
   }
 
@@ -36,19 +84,75 @@ export default function SoilHealthPage() {
     e.preventDefault()
     setIsDragging(false)
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setSelectedFile(e.dataTransfer.files[0])
+      const file = e.dataTransfer.files[0];
+      setSelectedFile(file);
+      
+      // Convert to base64 for API submission
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setImageBase64(base64String.split(',')[1]); // Remove data URL prefix
+      };
+      reader.readAsDataURL(file);
     }
   }
 
-  const handleAnalyze = () => {
-    if (!selectedFile) return
+  const handleAnalyze = async () => {
+    if (!selectedFile || !imageBase64) return
+    
     setIsAnalyzing(true)
     setActiveSection("results")
-    // Simulate analysis process
-    setTimeout(() => {
-      setIsAnalyzing(false)
-      setAnalysisComplete(true)
-    }, 2000)
+    
+    try {
+      // Call ML service for soil health analysis
+      const soilHealthResult = await mlService.analyzeSoilHealth(imageBase64);
+      
+      // Update state with results
+      setSoilData(soilHealthResult);
+      
+      // Send data to real-time service
+      await dataService.sendImageScan(imageBase64, undefined, {
+        type: 'soil',
+        filename: selectedFile.name,
+        timestamp: new Date().toISOString()
+      }).catch(error => {
+        console.error("Error sending soil scan:", error);
+      });
+      
+      setAnalysisComplete(true);
+    } catch (error) {
+      console.error("Analysis error:", error);
+      toast({
+        title: "Analysis Failed",
+        description: "Could not complete the soil health analysis. Please try again.",
+        variant: "destructive",
+      });
+      
+      // Fallback to mock data
+      setMockSoilData();
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }
+  
+  const setMockSoilData = () => {
+    const mockData: SoilHealthAnalysis = {
+      pH: 6.5,
+      nitrogen: 45,
+      phosphorus: 32,
+      potassium: 67,
+      organicMatter: 3.2,
+      healthScore: 78,
+      deficiencies: ["Minor nitrogen deficiency"],
+      recommendations: [
+        "Apply nitrogen-rich fertilizer",
+        "Consider adding organic matter to improve soil structure",
+        "Monitor pH levels regularly"
+      ]
+    };
+    
+    setSoilData(mockData);
+    setAnalysisComplete(true);
   }
 
   return (

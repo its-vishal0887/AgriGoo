@@ -1,11 +1,10 @@
 "use client"
 
+import "leaflet/dist/leaflet.css"
 import { useEffect, useMemo, useRef, useState } from "react"
-import dynamic from 'next/dynamic'
-
-// Import types only
-import type { LatLngExpression } from "leaflet"
+import { MapContainer, TileLayer, CircleMarker, Circle, Polygon, LayersControl, LayerGroup, useMapEvents } from "react-leaflet"
 import { useDashboard } from "@/components/dashboard-context"
+import type { LatLngExpression } from "leaflet"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -37,6 +36,15 @@ function severityColor(sev: Severity | number, status: Outbreak["status"]) {
   if (sev >= 8) return "#ef4444" // red
   if (sev >= 5) return "#f59e0b" // orange
   return "#facc15" // yellow
+}
+
+function ClickToDraw({ onPoint }: { onPoint: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      onPoint(e.latlng.lat, e.latlng.lng)
+    },
+  })
+  return null
 }
 
 export function OutbreakMap() {
@@ -93,7 +101,7 @@ export function OutbreakMap() {
       const diseaseOk = diseases.length === 0 || diseases.includes(o.disease)
       const timeOk = now - o.timestamp <= cutoffMs
       const sevOk = o.severity >= severity
-      const cropOk = !crop || o.crop === crop
+      const cropOk = !crop || crop === "all" || o.crop === crop
       let radiusOk = true
       if (radiusCenter) {
         const [clat, clng] = radiusCenter as [number, number]
@@ -111,86 +119,6 @@ export function OutbreakMap() {
   }, [combined, diseases, dateRange, severity, crop, radiusCenter, radiusKm])
 
   const center: LatLngExpression = useMemo(() => [18.5204, 73.8567], [])
-
-  // Create a client-side only map component
-  const Map = useMemo(() => {
-    return dynamic(
-      () => import('react-leaflet').then((mod) => {
-        // Import CSS only on client side
-        import('leaflet/dist/leaflet.css');
-        
-        const { MapContainer, TileLayer, CircleMarker, Circle, Polygon, LayersControl, LayerGroup, useMapEvents } = mod;
-        
-        // Define ClickToDraw component inside the dynamic import
-        function ClickToDraw({ onPoint }: { onPoint: (lat: number, lng: number) => void }) {
-          const events = useMapEvents({
-            click(e) {
-              onPoint(e.latlng.lat, e.latlng.lng)
-            },
-          })
-          return null
-        }
-        
-        return function Map() {
-          return (
-            <MapContainer center={center} zoom={6} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
-              <LayersControl position="topright">
-                <LayersControl.BaseLayer checked name="Terrain">
-                  <TileLayer
-                    attribution="&copy; OpenStreetMap contributors"
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                </LayersControl.BaseLayer>
-                <LayersControl.BaseLayer name="Satellite">
-                  <TileLayer
-                    attribution="Imagery &copy; Esri"
-                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                  />
-                </LayersControl.BaseLayer>
-
-                <LayersControl.Overlay checked name="Outbreaks">
-                  <LayerGroup>
-                    {filtered.map((o) => (
-                      <CircleMarker
-                        key={o.id}
-                        center={o.position}
-                        radius={8}
-                        pathOptions={{ color: severityColor(o.severity, o.status), fillOpacity: 0.8 }}
-                        eventHandlers={{ click: () => { setSelected(o); setSelectedRegion({ lat: (o.position as [number, number])[0], lng: (o.position as [number, number])[1], radiusKm: 25 }) } }}
-                      />
-                    ))}
-                  </LayerGroup>
-                </LayersControl.Overlay>
-
-                {showHeatmap && (
-                  <LayersControl.Overlay checked name="Heatmap">
-                    <LayerGroup>
-                      {filtered.map((o) => (
-                        <Circle key={`h-${o.id}`} center={o.position} radius={o.severity * 1000} pathOptions={{ color: severityColor(o.severity, o.status), opacity: 0.15, weight: 1, fillOpacity: 0.1 }} />
-                      ))}
-                    </LayerGroup>
-                  </LayersControl.Overlay>
-                )}
-              </LayersControl>
-
-              {radiusCenter && (
-                <Circle center={radiusCenter} radius={radiusKm * 1000} pathOptions={{ color: "#3b82f6", opacity: 0.5 }} />
-              )}
-
-              {boundaryPoints.length > 2 && (
-                <Polygon positions={boundaryPoints} pathOptions={{ color: "#22c55e", weight: 2, fillOpacity: 0.05 }} />
-              )}
-
-              {drawing && (
-                <ClickToDraw onPoint={(lat, lng) => setBoundaryPoints((pts) => [...pts, [lat, lng]])} />
-              )}
-            </MapContainer>
-          );
-        };
-      }),
-      { ssr: false }
-    );
-  }, [center, filtered, showHeatmap, radiusCenter, radiusKm, boundaryPoints, drawing, setSelected, setSelectedRegion]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
@@ -268,7 +196,58 @@ export function OutbreakMap() {
       {/* MAP */}
       <div className="lg:col-span-3">
         <div className="h-[600px] w-full rounded-md overflow-hidden border">
-          <Map />
+          <MapContainer center={center} zoom={6} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
+            <LayersControl position="topright">
+              <LayersControl.BaseLayer checked name="Terrain">
+                <TileLayer
+                  attribution="&copy; OpenStreetMap contributors"
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+              </LayersControl.BaseLayer>
+              <LayersControl.BaseLayer name="Satellite">
+                <TileLayer
+                  attribution="Imagery &copy; Esri"
+                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                />
+              </LayersControl.BaseLayer>
+
+              <LayersControl.Overlay checked name="Outbreaks">
+                <LayerGroup>
+                  {filtered.map((o) => (
+                    <CircleMarker
+                      key={o.id}
+                      center={o.position}
+                      radius={8}
+                      pathOptions={{ color: severityColor(o.severity, o.status), fillOpacity: 0.8 }}
+                      eventHandlers={{ click: () => { setSelected(o); setSelectedRegion({ lat: (o.position as [number, number])[0], lng: (o.position as [number, number])[1], radiusKm: 25 }) } }}
+                    />
+                  ))}
+                </LayerGroup>
+              </LayersControl.Overlay>
+
+              {showHeatmap && (
+                <LayersControl.Overlay checked name="Heatmap">
+                  <LayerGroup>
+                    {filtered.map((o) => (
+                      <Circle key={`h-${o.id}`} center={o.position} radius={o.severity * 1000} pathOptions={{ color: severityColor(o.severity, o.status), opacity: 0.15, weight: 1, fillOpacity: 0.1 }} />
+                    ))}
+                  </LayerGroup>
+                </LayersControl.Overlay>
+              )}
+            </LayersControl>
+
+            {radiusCenter && (
+              <Circle center={radiusCenter} radius={radiusKm * 1000} pathOptions={{ color: "#3b82f6", opacity: 0.5 }} />
+            )}
+
+            {boundaryPoints.length > 2 && (
+              <Polygon positions={boundaryPoints} pathOptions={{ color: "#22c55e", weight: 2, fillOpacity: 0.05 }} />
+            )}
+
+            {drawing && (
+              <ClickToDraw onPoint={(lat, lng) => setBoundaryPoints((pts) => [...pts, [lat, lng]])} />
+            )}
+          </MapContainer>
         </div>
       </div>
 
@@ -322,4 +301,5 @@ export function OutbreakMap() {
 }
 
 export default OutbreakMap
-
+
+

@@ -1,5 +1,3 @@
-import { io, Socket } from 'socket.io-client';
-
 type WeatherEvent = {
   type: "weather"
   payload: { tempC: number; humidity: number; alert?: string }
@@ -10,25 +8,14 @@ type OutbreakEvent = {
   payload: { lat: number; lng: number; disease: string; severity: number; status: "active" | "resolved" }
 }
 
-type ScanEvent = {
-  type: "scan"
-  payload: { farmId: string; status: "complete" | "in_progress"; results?: any }
-}
-
-type TreatmentEvent = {
-  type: "treatment"
-  payload: { farmId: string; progress: number; treatment: string }
-}
-
-export type RealtimeEvent = WeatherEvent | OutbreakEvent | ScanEvent | TreatmentEvent
+export type RealtimeEvent = WeatherEvent | OutbreakEvent
 
 type Listener = (event: RealtimeEvent) => void
 
 class RealtimeClient {
-  private socket: Socket | null = null
+  private ws: WebSocket | null = null
   private listeners: Set<Listener> = new Set()
   private mockTimers: number[] = []
-  private connected: boolean = false
 
   addListener(fn: Listener) {
     this.listeners.add(fn)
@@ -40,128 +27,35 @@ class RealtimeClient {
   }
 
   start() {
-    const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
-    
-    if (typeof window !== "undefined") {
+    const url = process.env.NEXT_PUBLIC_WS_URL
+    if (typeof window !== "undefined" && url) {
       try {
-        this.socket = io(url, {
-          reconnectionAttempts: 5,
-          reconnectionDelay: 1000,
-        });
-        
-        this.socket.on('connect', () => {
-          console.log('Connected to Socket.IO server');
-          this.connected = true;
-          
-          // Clear mock timers if we were using them
-          this.mockTimers.forEach((id) => clearInterval(id));
-          this.mockTimers = [];
-        });
-        
-        // Join farm room if farmId is available
-        const farmId = localStorage.getItem('farmId');
-        if (farmId) {
-          this.joinFarm(farmId);
+        this.ws = new WebSocket(url)
+        this.ws.onmessage = (msg) => {
+          try {
+            const data = JSON.parse(msg.data)
+            if (data && data.type) this.emit(data as RealtimeEvent)
+          } catch {}
         }
-        
-        // Join region room if region is available
-        const region = localStorage.getItem('region');
-        if (region) {
-          this.joinRegion(region);
+        this.ws.onclose = () => {
+          // fallback to mock if disconnected
+          this.startMock()
         }
-        
-        // Listen for events
-        this.socket.on('outbreak-alert', (data) => {
-          this.emit({
-            type: 'outbreak',
-            payload: {
-              lat: data.lat,
-              lng: data.lng,
-              disease: data.disease,
-              severity: data.severity,
-              status: data.status || 'active'
-            }
-          });
-        });
-        
-        this.socket.on('weather-notification', (data) => {
-          this.emit({
-            type: 'weather',
-            payload: {
-              tempC: data.tempC,
-              humidity: data.humidity,
-              alert: data.alert
-            }
-          });
-        });
-        
-        this.socket.on('scan-update', (data) => {
-          this.emit({
-            type: 'scan',
-            payload: {
-              farmId: data.farmId,
-              status: data.status,
-              results: data.results
-            }
-          });
-        });
-        
-        this.socket.on('treatment-progress', (data) => {
-          this.emit({
-            type: 'treatment',
-            payload: {
-              farmId: data.farmId,
-              progress: data.progress,
-              treatment: data.treatment
-            }
-          });
-        });
-        
-        this.socket.on('disconnect', () => {
-          console.log('Disconnected from Socket.IO server');
-          this.connected = false;
-          
-          // Fall back to mock if disconnected
-          this.startMock();
-        });
-        
-        return;
-      } catch (error) {
-        console.error('Socket connection error:', error);
-        // Fall back to mock
+        return
+      } catch {
+        // ignore and use mock
       }
     }
-    this.startMock();
+    this.startMock()
   }
 
   stop() {
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
-      this.connected = false;
+    if (this.ws) {
+      this.ws.close()
+      this.ws = null
     }
-    this.mockTimers.forEach((id) => clearInterval(id));
-    this.mockTimers = [];
-  }
-  
-  joinFarm(farmId: string) {
-    if (this.socket && this.connected) {
-      this.socket.emit('join-farm', farmId);
-      localStorage.setItem('farmId', farmId);
-    }
-  }
-  
-  joinRegion(region: string) {
-    if (this.socket && this.connected) {
-      this.socket.emit('join-region', region);
-      localStorage.setItem('region', region);
-    }
-  }
-  
-  reportOutbreak(data: { region: string; lat: number; lng: number; disease: string; severity: number }) {
-    if (this.socket && this.connected) {
-      this.socket.emit('new-outbreak', data);
-    }
+    this.mockTimers.forEach((id) => clearInterval(id))
+    this.mockTimers = []
   }
 
   private startMock() {
@@ -181,36 +75,7 @@ class RealtimeClient {
       const severity = 1 + Math.floor(Math.random() * 10)
       this.emit({ type: "outbreak", payload: { lat, lng, disease: d, severity, status: "active" } })
     }, 45_000)
-    // Scan updates every 60s
-    const s = window.setInterval(() => {
-      const farmId = localStorage.getItem('farmId') || 'farm-123';
-      this.emit({ 
-        type: "scan", 
-        payload: { 
-          farmId, 
-          status: "complete",
-          results: {
-            healthScore: Math.floor(Math.random() * 100),
-            detectedIssues: Math.random() > 0.7 ? ["Leaf spots", "Discoloration"] : []
-          }
-        } 
-      })
-    }, 60_000)
-    // Treatment updates every 75s
-    const t = window.setInterval(() => {
-      const farmId = localStorage.getItem('farmId') || 'farm-123';
-      const treatments = ["Fungicide Application", "Organic Spray", "Crop Rotation"];
-      const treatment = treatments[Math.floor(Math.random() * treatments.length)];
-      this.emit({ 
-        type: "treatment", 
-        payload: { 
-          farmId, 
-          progress: Math.floor(Math.random() * 100),
-          treatment
-        } 
-      })
-    }, 75_000)
-    this.mockTimers.push(w, o, s, t)
+    this.mockTimers.push(w, o)
   }
 
   private emit(event: RealtimeEvent) {

@@ -1,0 +1,22 @@
+name: agrigoo-ml-service
+region: nyc
+services:
+- name: ml-api
+  dockerfile_path: Dockerfile
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: yourusername/agrigoo-ml-service
+  health_check:
+    http_path: /health
+  instance_count: 1
+  instance_size_slug: basic-xs
+  routes:
+  - path: /
+  envs:
+  - key: MODEL_PATH
+    value: /app/models
+  - key: DEBUG
+    value: "False"
+  - key: ALLOWED_ORIGINS
+    value: ${FRONTEND_URL}

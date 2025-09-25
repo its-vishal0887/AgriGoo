@@ -1,0 +1,17 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[template.environment]
+  NEXT_PUBLIC_API_URL = "Backend API URL"
+  NEXT_PUBLIC_ML_SERVICE_URL = "ML Service URL"
+  NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME = "Cloudinary Cloud Name"
+  NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET = "Cloudinary Upload Preset"

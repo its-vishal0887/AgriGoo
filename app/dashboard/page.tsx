@@ -16,7 +16,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import OutbreakMap from "@/components/outbreak-map";
+import dynamic from 'next/dynamic';
+
+// Dynamically import the map component with no SSR to avoid window is not defined errors
+const OutbreakMap = dynamic(() => import("@/components/outbreak-map"), { 
+  ssr: false,
+  loading: () => <div className="h-[300px] w-full flex items-center justify-center border rounded-md">Loading map...</div>
+});
 import ClimateForecast from "@/components/climate-forecast";
 import { useDashboard } from "@/components/dashboard-context";
 

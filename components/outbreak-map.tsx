@@ -1,6 +1,6 @@
 "use client"
 
-import "leaflet/dist/leaflet.css"
+// Leaflet CSS is imported in layout.tsx to avoid duplication
 import { useEffect, useMemo, useRef, useState } from "react"
 import { MapContainer, TileLayer, CircleMarker, Circle, Polygon, LayersControl, LayerGroup, useMapEvents } from "react-leaflet"
 import { useDashboard } from "@/components/dashboard-context"

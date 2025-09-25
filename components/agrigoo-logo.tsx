@@ -1,3 +1,4 @@
+import * as React from "react"
 import Link from "next/link"
 
 interface AgriGooLogoProps {
@@ -6,7 +7,8 @@ interface AgriGooLogoProps {
   className?: string
 }
 
-export function AgriGooLogo({ size = "md", showTagline = true, className = "" }: AgriGooLogoProps) {
+export const AgriGooLogo = React.forwardRef<HTMLAnchorElement, AgriGooLogoProps>(
+  ({ size = "md", showTagline = true, className = "" }, ref) => {
   const sizeClasses = {
     sm: {
       container: "w-6 h-6",
@@ -31,7 +33,7 @@ export function AgriGooLogo({ size = "md", showTagline = true, className = "" }:
   const currentSize = sizeClasses[size]
 
   return (
-    <Link href="/" className={`flex items-center space-x-2 group ${className}`}>
+    <Link href="/" className={`flex items-center space-x-2 group ${className}`} ref={ref}>
       <div
         className={`${currentSize.container} bg-primary rounded-lg flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-200`}
       >
@@ -50,4 +52,6 @@ export function AgriGooLogo({ size = "md", showTagline = true, className = "" }:
       </div>
     </Link>
   )
-}
+})
+
+AgriGooLogo.displayName = "AgriGooLogo"

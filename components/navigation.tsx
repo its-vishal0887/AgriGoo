@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { AgriGooLogo } from "@/components/agrigoo-logo"
 import Link from "next/link"
 
@@ -57,6 +57,9 @@ export function Navigation() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-80 bg-white">
+                <div className="sr-only">
+                  <SheetTitle>Navigation Menu</SheetTitle>
+                </div>
                 <div className="flex flex-col space-y-6 mt-8">
                   <div className="pb-4 border-b border-primary/10">
                     <AgriGooLogo size="md" showTagline={true} />

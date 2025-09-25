@@ -454,7 +454,7 @@ export default function DashboardPage() {
                             <SelectValue placeholder="All Diseases" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">All Diseases</SelectItem>
+                            <SelectItem value="all-diseases">All Diseases</SelectItem>
                             <SelectItem value="powdery-mildew">Powdery Mildew</SelectItem>
                             <SelectItem value="leaf-spot">Leaf Spot</SelectItem>
                             <SelectItem value="rust">Rust</SelectItem>

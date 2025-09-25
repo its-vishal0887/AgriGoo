@@ -9,9 +9,9 @@ import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Upload, Camera, Flask, LineChart, Leaf, Calendar, AlertCircle } from "lucide-react"
-import { MLService, SoilHealthAnalysis } from "@/lib/ml-service"
-import { dataService, SensorData } from "@/lib/data-service"
-import { useToast } from "@/components/ui/use-toast"
+import { MLService, SoilHealthAnalysis } from "../../lib/ml-service"
+import { dataService, SensorData } from "../../lib/data-service"
+import { toast } from "sonner"
 
 export default function SoilHealthPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -22,7 +22,6 @@ export default function SoilHealthPage() {
   const [imageBase64, setImageBase64] = useState<string | null>(null)
   const [soilData, setSoilData] = useState<SoilHealthAnalysis | null>(null)
   const [sensorData, setSensorData] = useState<SensorData | null>(null)
-  const { toast } = useToast()
   
   // Initialize ML service
   const mlService = new MLService()
@@ -38,10 +37,8 @@ export default function SoilHealthPage() {
     // Subscribe to sensor data updates
     dataService.onScanUpdate((data) => {
       if (data.type === 'soil') {
-        toast({
-          title: "Soil Data Update",
+        toast("Soil Data Update", {
           description: `New soil analysis data available`,
-          variant: "default",
         });
         
         // Update sensor data if available

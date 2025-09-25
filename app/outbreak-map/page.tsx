@@ -1,10 +1,4 @@
-import dynamic from 'next/dynamic'
-
-// Dynamically import the map component with SSR disabled
-const OutbreakMap = dynamic(
-  () => import('@/components/outbreak-map'),
-  { ssr: false }
-)
+import OutbreakMap from "@/components/outbreak-map"
 
 export default function OutbreakMapPage() {
   return (

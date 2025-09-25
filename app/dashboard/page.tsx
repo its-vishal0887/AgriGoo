@@ -16,13 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import dynamic from 'next/dynamic'
-
-// Dynamically import the map component with SSR disabled
-const OutbreakMap = dynamic(
-  () => import('@/components/outbreak-map'),
-  { ssr: false }
-);
+import OutbreakMap from "@/components/outbreak-map";
 import ClimateForecast from "@/components/climate-forecast";
 import { useDashboard } from "@/components/dashboard-context";
 
@@ -460,7 +454,7 @@ export default function DashboardPage() {
                             <SelectValue placeholder="All Diseases" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">All Diseases</SelectItem>
+                            <SelectItem value="">All Diseases</SelectItem>
                             <SelectItem value="powdery-mildew">Powdery Mildew</SelectItem>
                             <SelectItem value="leaf-spot">Leaf Spot</SelectItem>
                             <SelectItem value="rust">Rust</SelectItem>

@@ -2,13 +2,14 @@
 
 import type React from "react"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Navigation } from "@/components/navigation"
+import { detectDisease } from "@/lib/api"
 import {
   Upload,
   Camera,
@@ -95,66 +96,95 @@ export default function DetectionPage() {
     setAnalysisProgress(0)
     setResult(null)
 
-    // Simulate analysis process
-    const steps = [
-      { step: "Uploading", duration: 1000 },
-      { step: "Analyzing", duration: 2000 },
-      { step: "Processing", duration: 1500 },
-      { step: "Results", duration: 500 },
-    ]
+    try {
+      // Define analysis steps
+      const steps = [
+        { step: "Uploading", duration: 1000 },
+        { step: "Analyzing", duration: 2000 },
+        { step: "Processing", duration: 1500 },
+        { step: "Results", duration: 500 },
+      ]
 
-    let totalProgress = 0
-    for (let i = 0; i < steps.length; i++) {
-      setCurrentStep(steps[i].step)
+      // Animate progress for visual feedback
+      let totalProgress = 0
+      for (let i = 0; i < steps.length; i++) {
+        setCurrentStep(steps[i].step)
 
-      const stepProgress = 100 / steps.length
-      const startProgress = totalProgress
-      const endProgress = totalProgress + stepProgress
+        const stepProgress = 100 / steps.length
+        const startProgress = totalProgress
+        const endProgress = totalProgress + stepProgress
 
-      // Animate progress for this step
-      const animationDuration = steps[i].duration
-      const animationSteps = 20
-      const progressIncrement = stepProgress / animationSteps
-      const timeIncrement = animationDuration / animationSteps
+        // Animate progress for this step
+        const animationDuration = steps[i].duration
+        const animationSteps = 20
+        const progressIncrement = stepProgress / animationSteps
+        const timeIncrement = animationDuration / animationSteps
 
-      for (let j = 0; j <= animationSteps; j++) {
-        await new Promise((resolve) => setTimeout(resolve, timeIncrement))
-        setAnalysisProgress(Math.min(startProgress + progressIncrement * j, endProgress))
+        for (let j = 0; j <= animationSteps; j++) {
+          await new Promise((resolve) => setTimeout(resolve, timeIncrement))
+          setAnalysisProgress(Math.min(startProgress + progressIncrement * j, endProgress))
+        }
+
+        totalProgress = endProgress
       }
 
-      totalProgress = endProgress
+      // Call the API to detect disease
+      const response = await detectDisease(selectedFile);
+      
+      if (response.success) {
+        const apiResult: AnalysisResult = {
+          disease: response.disease,
+          confidence: response.confidence * 100, // Convert from 0-1 to percentage
+          severity: response.severity,
+          description: response.description,
+          treatment: response.treatment,
+          prevention: response.prevention,
+          nextSteps: response.nextSteps,
+        };
+        
+        setResult(apiResult);
+      } else {
+        // If API call fails, show an error or fallback to mock data
+        console.error("API error:", response.error);
+        alert("Error analyzing image. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error in disease detection:", error);
+      alert("Error analyzing image. Please try again.");
+      
+      // Fallback to mock data for development/demo purposes
+      if (process.env.NODE_ENV === 'development') {
+        const mockResult: AnalysisResult = {
+          disease: "Early Blight (Alternaria solani)",
+          confidence: 94.7,
+          severity: "medium",
+          description:
+            "Early blight is a common fungal disease affecting tomato and potato plants. It typically appears as dark, concentric rings on older leaves and can spread rapidly in warm, humid conditions.",
+          treatment: [
+            "Apply copper-based fungicide spray every 7-10 days",
+            "Remove and destroy affected leaves immediately",
+            "Improve air circulation around plants",
+            "Water at soil level to avoid wetting leaves",
+          ],
+          prevention: [
+            "Use disease-resistant varieties when possible",
+            "Rotate crops annually to break disease cycle",
+            "Maintain proper plant spacing for air circulation",
+            "Apply mulch to prevent soil splash onto leaves",
+            "Monitor plants regularly for early detection",
+          ],
+          nextSteps: [
+            "Begin treatment within 24 hours for best results",
+            "Monitor plant response after 1 week of treatment",
+            "Consider soil testing for nutrient deficiencies",
+            "Schedule follow-up analysis in 2 weeks",
+          ],
+        };
+        setResult(mockResult);
+      }
+    } finally {
+      setIsAnalyzing(false);
     }
-
-    // Mock result
-    const mockResult: AnalysisResult = {
-      disease: "Early Blight (Alternaria solani)",
-      confidence: 94.7,
-      severity: "medium",
-      description:
-        "Early blight is a common fungal disease affecting tomato and potato plants. It typically appears as dark, concentric rings on older leaves and can spread rapidly in warm, humid conditions.",
-      treatment: [
-        "Apply copper-based fungicide spray every 7-10 days",
-        "Remove and destroy affected leaves immediately",
-        "Improve air circulation around plants",
-        "Water at soil level to avoid wetting leaves",
-      ],
-      prevention: [
-        "Use disease-resistant varieties when possible",
-        "Rotate crops annually to break disease cycle",
-        "Maintain proper plant spacing for air circulation",
-        "Apply mulch to prevent soil splash onto leaves",
-        "Monitor plants regularly for early detection",
-      ],
-      nextSteps: [
-        "Begin treatment within 24 hours for best results",
-        "Monitor plant response after 1 week of treatment",
-        "Consider soil testing for nutrient deficiencies",
-        "Schedule follow-up analysis in 2 weeks",
-      ],
-    }
-
-    setResult(mockResult)
-    setIsAnalyzing(false)
   }
 
   const getSeverityColor = (severity: string) => {

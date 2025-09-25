@@ -1,8 +1,6 @@
 "use client"
 
-import "leaflet/dist/leaflet.css"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { MapContainer, TileLayer, CircleMarker, Circle, Polygon, LayersControl, LayerGroup, useMapEvents } from "react-leaflet"
 import { useDashboard } from "@/components/dashboard-context"
 import type { LatLngExpression } from "leaflet"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -11,6 +9,30 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Slider } from "@/components/ui/slider"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+// Import Leaflet components only on client side
+let MapContainer: any;
+let TileLayer: any;
+let CircleMarker: any;
+let Circle: any;
+let Polygon: any;
+let LayersControl: any;
+let LayerGroup: any;
+let useMapEvents: any;
+
+// Only import Leaflet on the client side
+if (typeof window !== 'undefined') {
+  require("leaflet/dist/leaflet.css");
+  const leaflet = require('react-leaflet');
+  MapContainer = leaflet.MapContainer;
+  TileLayer = leaflet.TileLayer;
+  CircleMarker = leaflet.CircleMarker;
+  Circle = leaflet.Circle;
+  Polygon = leaflet.Polygon;
+  LayersControl = leaflet.LayersControl;
+  LayerGroup = leaflet.LayerGroup;
+  useMapEvents = leaflet.useMapEvents;
+}
 
 type Severity = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
 
@@ -60,12 +82,62 @@ export function OutbreakMap() {
   const [showHeatmap, setShowHeatmap] = useState<boolean>(true)
   const [drawing, setDrawing] = useState<boolean>(false)
   const [boundaryPoints, setBoundaryPoints] = useState<Array<[number, number]>>([])
+  const [isMounted, setIsMounted] = useState(false)
 
-  // Simulate live updates every 5 minutes (fast cycle 20s for demo)
+  // Fetch outbreak data from API and simulate real-time updates
   useEffect(() => {
+    // Only run on client-side to avoid 'window is not defined' error
+    if (typeof window === 'undefined') return;
+    
+    // Set initial outbreaks immediately to ensure we have data
+    setLocalOutbreaks(initialOutbreaks);
+    
+    // Fetch initial outbreak data from API
+    const fetchOutbreaks = async () => {
+      try {
+        console.log("Fetching outbreak data from API...");
+        const response = await fetch('/api/ml/outbreaks', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.outbreaks && Array.isArray(data.outbreaks)) {
+            // Map API data to local format
+            const apiOutbreaks = data.outbreaks.map((o: any) => ({
+              id: o.id || Math.random().toString(36).slice(2),
+              position: [o.lat, o.lng],
+              disease: o.disease,
+              crop: o.crop || "Unknown",
+              severity: (o.severity || 5) as Severity,
+              status: o.status || "active",
+              timestamp: o.timestamp || Date.now(),
+            }));
+            console.log("Successfully fetched outbreak data:", apiOutbreaks.length, "outbreaks");
+            if (apiOutbreaks.length > 0) {
+              setLocalOutbreaks(apiOutbreaks);
+            }
+          }
+        } else {
+          console.warn("API returned non-OK response:", response.status);
+          // Keep using initialOutbreaks (already set)
+        }
+      } catch (error) {
+        console.error("Error fetching outbreak data:", error);
+        // Continue with mock data (already set)
+      }
+    };
+
+    // Initial fetch
+    fetchOutbreaks();
+
+    // Simulate live updates every 5 minutes (fast cycle 20s for demo)
+    const jitter = (v: number) => v + (Math.random() - 0.5) * 0.05
     const id = setInterval(() => {
       setLocalOutbreaks((prev) => {
-        const jitter = (v: number) => v + (Math.random() - 0.5) * 0.05
         const updated = prev.map((o) =>
           o.status === "active"
             ? { ...o, position: [jitter((o.position as [number, number])[0]), jitter((o.position as [number, number])[1])], timestamp: Date.now() }
@@ -119,6 +191,10 @@ export function OutbreakMap() {
   }, [combined, diseases, dateRange, severity, crop, radiusCenter, radiusKm])
 
   const center: LatLngExpression = useMemo(() => [18.5204, 73.8567], [])
+  
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
@@ -163,7 +239,7 @@ export function OutbreakMap() {
             </div>
             <div>
               <div className="text-xs text-muted-foreground mb-1">Crop type</div>
-              <Select onValueChange={setCrop}>
+              <Select value={crop || "all"} onValueChange={setCrop}>
                 <SelectTrigger><SelectValue placeholder="All crops" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
@@ -196,58 +272,60 @@ export function OutbreakMap() {
       {/* MAP */}
       <div className="lg:col-span-3">
         <div className="h-[600px] w-full rounded-md overflow-hidden border">
-          <MapContainer center={center} zoom={6} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
-            <LayersControl position="topright">
-              <LayersControl.BaseLayer checked name="Terrain">
-                <TileLayer
-                  attribution="&copy; OpenStreetMap contributors"
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-              </LayersControl.BaseLayer>
-              <LayersControl.BaseLayer name="Satellite">
-                <TileLayer
-                  attribution="Imagery &copy; Esri"
-                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                />
-              </LayersControl.BaseLayer>
+          {isMounted && (
+            <MapContainer center={center} zoom={6} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
+              <LayersControl position="topright">
+                <LayersControl.BaseLayer checked name="Terrain">
+                  <TileLayer
+                    attribution="&copy; OpenStreetMap contributors"
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                </LayersControl.BaseLayer>
+                <LayersControl.BaseLayer name="Satellite">
+                  <TileLayer
+                    attribution="Imagery &copy; Esri"
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                  />
+                </LayersControl.BaseLayer>
 
-              <LayersControl.Overlay checked name="Outbreaks">
-                <LayerGroup>
-                  {filtered.map((o) => (
-                    <CircleMarker
-                      key={o.id}
-                      center={o.position}
-                      radius={8}
-                      pathOptions={{ color: severityColor(o.severity, o.status), fillOpacity: 0.8 }}
-                      eventHandlers={{ click: () => { setSelected(o); setSelectedRegion({ lat: (o.position as [number, number])[0], lng: (o.position as [number, number])[1], radiusKm: 25 }) } }}
-                    />
-                  ))}
-                </LayerGroup>
-              </LayersControl.Overlay>
-
-              {showHeatmap && (
-                <LayersControl.Overlay checked name="Heatmap">
+                <LayersControl.Overlay checked name="Outbreaks">
                   <LayerGroup>
                     {filtered.map((o) => (
-                      <Circle key={`h-${o.id}`} center={o.position} radius={o.severity * 1000} pathOptions={{ color: severityColor(o.severity, o.status), opacity: 0.15, weight: 1, fillOpacity: 0.1 }} />
+                      <CircleMarker
+                        key={o.id}
+                        center={o.position}
+                        radius={8}
+                        pathOptions={{ color: severityColor(o.severity, o.status), fillOpacity: 0.8 }}
+                        eventHandlers={{ click: () => { setSelected(o); setSelectedRegion({ lat: (o.position as [number, number])[0], lng: (o.position as [number, number])[1], radiusKm: 25 }) } }}
+                      />
                     ))}
                   </LayerGroup>
                 </LayersControl.Overlay>
+
+                {showHeatmap && (
+                  <LayersControl.Overlay checked name="Heatmap">
+                    <LayerGroup>
+                      {filtered.map((o) => (
+                        <Circle key={`h-${o.id}`} center={o.position} radius={o.severity * 1000} pathOptions={{ color: severityColor(o.severity, o.status), opacity: 0.15, weight: 1, fillOpacity: 0.1 }} />
+                      ))}
+                    </LayerGroup>
+                  </LayersControl.Overlay>
+                )}
+              </LayersControl>
+
+              {radiusCenter && (
+                <Circle center={radiusCenter} radius={radiusKm * 1000} pathOptions={{ color: "#3b82f6", opacity: 0.5 }} />
               )}
-            </LayersControl>
 
-            {radiusCenter && (
-              <Circle center={radiusCenter} radius={radiusKm * 1000} pathOptions={{ color: "#3b82f6", opacity: 0.5 }} />
-            )}
+              {boundaryPoints.length > 2 && (
+                <Polygon positions={boundaryPoints} pathOptions={{ color: "#22c55e", weight: 2, fillOpacity: 0.05 }} />
+              )}
 
-            {boundaryPoints.length > 2 && (
-              <Polygon positions={boundaryPoints} pathOptions={{ color: "#22c55e", weight: 2, fillOpacity: 0.05 }} />
-            )}
-
-            {drawing && (
-              <ClickToDraw onPoint={(lat, lng) => setBoundaryPoints((pts) => [...pts, [lat, lng]])} />
-            )}
-          </MapContainer>
+              {drawing && (
+                <ClickToDraw onPoint={(lat, lng) => setBoundaryPoints((pts) => [...pts, [lat, lng]])} />
+              )}
+            </MapContainer>
+          )}
         </div>
       </div>
 

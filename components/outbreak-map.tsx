@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { MapContainer, TileLayer, CircleMarker, Circle, Polygon, LayersControl, LayerGroup, useMapEvents } from "react-leaflet"
 import { useDashboard } from "@/components/dashboard-context"
 import type { LatLngExpression } from "leaflet"
+import dynamic from 'next/dynamic'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"

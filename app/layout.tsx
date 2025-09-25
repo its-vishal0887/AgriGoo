@@ -5,6 +5,7 @@ import { Suspense } from "react"
 import "./globals.css"
 import { DashboardProvider } from "@/components/dashboard-context"
 import { Toaster } from "sonner"
+import 'leaflet/dist/leaflet.css'
 
 const inter = Inter({
   subsets: ["latin"],
